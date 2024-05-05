@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organizador de Times e Partidas com Cronômetro</title>
+<style>
+  body { font-family: Arial, sans-serif; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background-color: #f2f2f2; }
+  #timer { font-size: 20px; color: red; }
+  footer { text-align: center; margin-top: 20px; }
+</style>
+</head>
+<body>
+<h2>Organizador de Times e Partidas</h2>
+<label for="playerName">Nome do Jogador:</label>
+<input type="text" id="playerName" placeholder="Insira o nome do jogador">
+<button onclick="addPlayer()">Adicionar Jogador</button>
+
+<h3>Jogadores</h3>
+<ul id="playerList"></ul>
+
+<h3>Times</h3>
+<table id="teamTable">
+  <tr>
+    <th>Time</th>
+    <th>Jogador 1</th>
+    <th>Jogador 2</th>
+    <th>Jogador 3</th>
+  </tr>
+</table>
+
+<h3>Partidas</h3>
+<table id="matchTable">
+  <tr>
+    <th>Partida</th>
+    <th>Time 1</th>
+    <th>Time 2</th>
+    <th>Vencedor</th>
+  </tr>
+</table>
+
+<h3>Sequência de Vitórias</h3>
+<table id="winStreakTable">
+  <tr>
+    <th>Time</th>
+    <th>Vitórias Consecutivas</th>
+  </tr>
+</table>
+
+<h3>Cronômetro</h3>
+<div id="timer">07:00</div>
+
+<label for="teamOne">Time 1:</label>
+<input type="number" id="teamOne" placeholder="Número do time">
+<label for="teamTwo">Time 2:</label>
+<input type="number" id="teamTwo" placeholder="Número do time">
+<button onclick="startMatch()">Iniciar Partida</button>
+
+<script>
+let players = [];
+let teams = [];
+let matches = [];
+let winStreaks = {};
+let timer;
+let matchDuration = 7 * 60; // 7 minutos em segundos
+
+function addPlayer() {
+  const playerName = document.getElementById('playerName').value;
+  if (playerName) {
+    players.push(playerName);
+    document.getElementById('playerName').value = '';
+    updatePlayerList();
+    if (players.length % 3 === 0) {
+      createTeam();
+    }
+  }
+}
+
+function updatePlayerList() {
+  const playerList = document.getElementById('playerList');
+  playerList.innerHTML = '';
+  players.forEach((player, index) => {
+    playerList.innerHTML += `<li>${index + 1}. ${player}</li>`;
+  });
+}
+
+function createTeam() {
+  const newTeam = players.slice(-3);
+  teams.push(newTeam);
+  updateTeamTable();
+}
+
+function updateTeamTable() {
+  const teamTable = document.getElementById('teamTable');
+  let tableHTML = '<tr><th>Time</th><th>Jogador 1</th><th>Jogador 2</th><th>Jogador 3</th></tr>';
+  teams.forEach((team, index) => {
+    tableHTML += `<tr><td>${index + 1}</td><td>${team[0]}</td><td>${team[1]}</td><td>${team[2]}</td></tr>`;
+  });
+  teamTable.innerHTML = tableHTML;
+}
+
+function startMatch() {
+  const teamOne = parseInt(document.getElementById('teamOne').value);
+  const teamTwo = parseInt(document.getElementById('teamTwo').value);
+  if (teamOne === teamTwo) {
+    alert('Não é permitido jogar com o mesmo time. Por favor, escolha times diferentes.');
+    return;
+  }
+  if (!teams[teamOne - 1] || !teams[teamTwo - 1]) {
+    alert('Um dos times selecionados não existe. Por favor, escolha um time existente.');
+    return;
+  }
+  const matchNumber = matches.length + 1;
+  matches.push({ teamOne, teamTwo, winner: null });
+  updateMatchTable();
+  startTimer();
+  alert(`Partida ${matchNumber} iniciada entre Time ${teamOne} e Time ${teamTwo}.`);
+}
+
+function updateMatchTable() {
+  const matchTable = document.getElementById('matchTable');
+  let tableHTML = '<tr><th>Partida</th><th>Time 1</th><th>Time 2</th><th>Vencedor</th></tr>';
+  matches.forEach((match, index) => {
+    tableHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${match.teamOne}</td>
+        <td>${match.teamTwo}</td>
+        <td>
+          <input type="radio" name="winner${index}" onchange="setWinner(${index}, ${match.teamOne})" ${match.winner === match.teamOne ? 'checked' : ''}> Time ${match.teamOne}
+          <input type="radio" name="winner${index}" onchange="setWinner(${index}, ${match.teamTwo})" ${match.winner === match.teamTwo ? 'checked' : ''}> Time ${match.teamTwo}
+        </td>
+      </tr>`;
+  });
+  matchTable.innerHTML = tableHTML;
+}
+
+function startTimer() {
+  clearInterval(timer); // Limpar cronômetro anterior, se houver
+  let timeRemaining = matchDuration;
+  timer = setInterval(function() {
+    let minutes = parseInt(timeRemaining / 60, 10);
+    let seconds = parseInt(timeRemaining % 60, 10);
+
+    minutes = minutes < 10 ? "0" + minutes : minutes;
+    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+    document.getElementById('timer').textContent = minutes + ":" + seconds;
+
+    if (--timeRemaining < 0) {
+      clearInterval(timer);
+      alert('O tempo da partida acabou!');
+      document.getElementById('timer').textContent = "07:00";
+    }
+  }, 1000);
+}
+
+function setWinner(matchIndex, teamNumber) {
+  clearInterval(timer);
+  document.getElementById('timer').textContent = "07:00";
+  matches[matchIndex].winner = teamNumber;
+  winStreaks[teamNumber] = (winStreaks[teamNumber] || 0) + 1;
+  Object.keys(winStreaks).forEach(team => {
+    if (team !== teamNumber.toString()) {
+      winStreaks[team] = 0;
+    }
+  });
+  updateWinStreakTable();
+  if (winStreaks[teamNumber] === 4) {
+    alert(`O Time ${teamNumber} venceu 4 partidas consecutivas.`);
+    rotateTeams(teamNumber, matches[matchIndex].teamOne === teamNumber ? matches[matchIndex].teamTwo : matches[matchIndex].teamOne);
+    winStreaks = {}; // Reiniciar a contagem de vitórias consecutivas para todos os times
+  } else {
+    updateMatchTable();
+    alert(`O Time ${teamNumber} venceu a Partida ${matchIndex + 1} e enfrentará o próximo time na lista.`);
+  }
+}
+
+function updateWinStreakTable() {
+  const winStreakTable = document.getElementById('winStreakTable');
+  let tableHTML = '<tr><th>Time</th><th>Vitórias Consecutivas</th></tr>';
+  Object.keys(winStreaks).forEach(team => {
+    if (winStreaks[team] > 0) {
+      tableHTML += `<tr><td>${team}</td><td>${winStreaks[team]}</td></tr>`;
+    }
+  });
+  winStreakTable.innerHTML = tableHTML;
+}
+
+function rotateTeams(winningTeam, losingTeam) {
+  const winningTeamIndex = teams.findIndex((team, index) => index + 1 === winningTeam);
+  const losingTeamIndex = teams.findIndex((team, index) => index + 1 === losingTeam);
+  
+  // Remove and store the teams
+  const winningTeamData = teams.splice(winningTeamIndex, 1)[0];
+  const losingTeamData = teams.splice(losingTeamIndex, 1)[0];
+
+  // Place the winning team in the penultimate position
+  teams.splice(teams.length, 0, winningTeamData);
+
+  // Place the losing team in the last position
+  teams.push(losingTeamData);
+
+  updateTeamTable();
+}
+
+</script>
+
+<footer>
+  Desenvolvido por PEAR Sistemas de Informação - © 2024
+</footer>
+
+</body>
+</html>
